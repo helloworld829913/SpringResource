@@ -1,11 +1,13 @@
 package org.study.spring;
 
 import java.io.File;
-import java.lang.annotation.Annotation;
 import java.net.URL;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 public class MyApplicationContext {
     private Class Appconfig;
+    private ConcurrentHashMap<String ,BeanDefinition> beanDefinitionMap=new ConcurrentHashMap<>();
 
     public MyApplicationContext(Class configClass) {
         this.Appconfig = configClass;
@@ -39,12 +41,24 @@ public class MyApplicationContext {
                         Class<?> clazz = classLoader.loadClass(className);
                         if (clazz.isAnnotationPresent(Component.class)) {
                             //============================4. 如何获取Bean============================
+                            //获取beanName
+                            Component component = clazz.getAnnotation(Component.class);
+                            String beanName = component.value();
+
+                            BeanDefinition beanDefinition=new BeanDefinition();
+                            beanDefinition.setType(clazz);
+
+                            // scope判断（单例、多例）
+                            if(clazz.isAnnotationPresent(Scope.class)){
+                                Scope scope=clazz.getAnnotation(Scope.class);
+                                beanDefinition.setScope(scope.value());
+                            }else beanDefinition.setScope("singleton");
+                            // 把beanName和bean定义，放入hashmap
+                            beanDefinitionMap.put(beanName,beanDefinition);
                         }
                     } catch (ClassNotFoundException e) {
                         throw new RuntimeException(e);
                     }
-
-
                 }
             }
         }
