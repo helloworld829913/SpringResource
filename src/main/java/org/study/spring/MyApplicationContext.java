@@ -3,11 +3,11 @@ package org.study.spring;
 import java.io.File;
 import java.net.URL;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 public class MyApplicationContext {
     private Class Appconfig;
-    private ConcurrentHashMap<String ,BeanDefinition> beanDefinitionMap=new ConcurrentHashMap<>();
+    private ConcurrentHashMap<String, BeanDefinition> beanDefinitionMap = new ConcurrentHashMap<>();
+    private ConcurrentHashMap<String, Object> singletonObjects = new ConcurrentHashMap<>();
 
     public MyApplicationContext(Class configClass) {
         this.Appconfig = configClass;
@@ -45,16 +45,16 @@ public class MyApplicationContext {
                             Component component = clazz.getAnnotation(Component.class);
                             String beanName = component.value();
 
-                            BeanDefinition beanDefinition=new BeanDefinition();
+                            BeanDefinition beanDefinition = new BeanDefinition();
                             beanDefinition.setType(clazz);
 
                             // scope判断（单例、多例）
-                            if(clazz.isAnnotationPresent(Scope.class)){
-                                Scope scope=clazz.getAnnotation(Scope.class);
+                            if (clazz.isAnnotationPresent(Scope.class)) {
+                                Scope scope = clazz.getAnnotation(Scope.class);
                                 beanDefinition.setScope(scope.value());
-                            }else beanDefinition.setScope("singleton");
+                            } else beanDefinition.setScope("singleton");
                             // 把beanName和bean定义，放入hashmap
-                            beanDefinitionMap.put(beanName,beanDefinition);
+                            beanDefinitionMap.put(beanName, beanDefinition);
                         }
                     } catch (ClassNotFoundException e) {
                         throw new RuntimeException(e);
@@ -62,9 +62,46 @@ public class MyApplicationContext {
                 }
             }
         }
+
+        //============================5. 实例化单例Bean============================
+        // keySet() 方法用于获取 beanDefinitionMap 中所有的键（即 bean 的名称）
+        // 以便遍历并处理每个 Bean 定义。
+        for (String beanName : beanDefinitionMap.keySet()) {
+            // 根据bean的名字获取bean定义
+            BeanDefinition beanDefinition = beanDefinitionMap.get(beanName);
+
+            if (beanDefinition.getScope().equals("singleton")) {
+                Object bean = createBean(beanName, beanDefinition);
+                singletonObjects.put(beanName, bean);
+            }
+        }
+    }
+
+    private Object createBean(String beanName, BeanDefinition beanDefinition) {
+        return null;
+
     }
 
     public Object getBean(String beanName) {
-        return null;
+        BeanDefinition beanDefinition = beanDefinitionMap.get(beanName);
+
+        if (beanDefinition == null) {
+            throw new NullPointerException();
+        } else {
+            String scope = beanDefinition.getScope();
+            if (scope.equals("singleton")) {
+                Object bean = singletonObjects.get(beanName);
+                // 单例池中没有，就手动创建bean
+                if (bean == null) {
+                    Object o = createBean(beanName, beanDefinition);
+                    singletonObjects.put(beanName, o);
+                }
+                return bean;
+            } else {
+                //对于多例bean，每一次直接创建即可。
+                return createBean(beanName, beanDefinition);
+            }
+        }
     }
+
 }
